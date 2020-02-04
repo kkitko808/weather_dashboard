@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Weather Forecast</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Weather Dashboard</h1>
+        </header>
+        <!-- Search for city aside box -->
+        <aside class="col-sm-3">
+            <form id="city-search-form">
+                <h4 class="col-sm-12">Search for a City:</h4>
+                <input class="col-sm-7" type="text" class="form-control" id="city-search-text"><button type="submit"
+                    class="col-sm-4 btn btn-primary">Search</button>
+            </form>
+            <div id="local-storage-cities"></div>
+        </aside>
+        <div class=" right-box col-sm-8">
+            <section id="city-report" class="col-sm-12">
+            </section>
+            <section id="forecast" class="col-sm-12">
+
+            </section>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+    <script type="text/javascript">
+        function showLocalStorage() {
+            if (localStorage.getItem('cities') != null) {
+                $("#local-storage-cities").empty()
+                var citiesToShow = JSON.parse(localStorage.getItem('cities'));
+                citiesToShow.forEach(city => {
+                    var cityEl = $(`<p>${city}</p>`);
+                    cityEl.appendTo("#local-storage-cities");
+                });
+            }
+        }
+        showLocalStorage();
+        // API key for openweathermap
+        var citiesArr = [];
+        var userCity = "Atlanta";
+        var APIKey = "de42f19ab27c7681f703973e88268186";
+
+        $("#city-search-form").submit(function (event) {
+            event.preventDefault();
+
+            $thisFormTextBox = $(this).children()[1]
+            $thisCity = $($thisFormTextBox).val()
+            if ($thisCity != "") {
+                userCity = $thisCity;
+                if (localStorage.getItem('cities') != null) {
+                    citiesArr = JSON.parse(localStorage.getItem('cities'));
+                    citiesArr.unshift(userCity);
+                    localStorage.setItem('cities', JSON.stringify(citiesArr));
+                }
+                else {
+                    citiesArr.push(userCity);
+                    localStorage.setItem('cities', JSON.stringify(citiesArr));
+                }
+            }
+            else {
+                userCity = "Dallas";
+            }
+            var queryURL = "https://api.openweathermap.org/data/2.5/weather?q=" + userCity + "&appid=" + APIKey;
+            showLocalStorage();
+            $.ajax({
+                url: queryURL,
+                method: "GET"
+            }).then(function (response) {
+                $("#city-report").empty()
+                var currentDate = moment().format('MM/DD/YYYY');
+                var temp = Math.floor((response.main.temp - 273.15) * 1.80 + 32)
+                $weatherReport = $(`<h2>${response.name} (${currentDate}) <img src = http://openweathermap.org/img/wn/${response.weather[0].icon}@2x.png></h2>
+                <p>Temperature: ${temp} °F</p>
+                <p>Humidity: ${response.main.humidity}%</p>
+                <p>Wind Speed: ${response.wind.speed}</p>`)
+                $("#city-report").append($weatherReport)
+                var lat = response.coord.lat
+                var lon = response.coord.lon
+
+                var uvURL = `http://api.openweathermap.org/data/2.5/uvi?appid=${APIKey}&lat=${lat}&lon=${lon}`
+                var fiveDayURL = `https://api.openweathermap.org/data/2.5/forecast?id=${response.id}&appid=${APIKey}`
+                // gets the UV response
+                $.ajax({
+                    url: uvURL,
+                    method: "GET"
+                }).then(function (response) {
+                    $uvIndex = $(`<p>UV Index: <span class="uv-Index">${response.value}<span></p>`)
+                    $("#city-report").append($uvIndex)
+                })
+                // gets the 5 day forecast response
+                $.ajax({
+                    url: fiveDayURL,
+                    method: "GET"
+                }).then(function (response) {
+                    console.log(response)
+                    var addedDays = 1;
+                    var forecastH2 = $("<h2>5-Day Forecast:</h2>")
+                    forecastH2.appendTo($("#forecast"))
+                    for (var i = 0; i < 40; i += 9) {
+                        var dayNow = moment().add(addedDays, 'days').format('MM/DD/YYYY')
+                        addedDays++;
+                        console.log(dayNow)
+                        // response.list[i]
+                        var forecastBlock = $(`<div class= "forecast-block">
+                                                <h5>${dayNow}</h5>
+                                                <img src=http://openweathermap.org/img/wn/${response.list[i].weather[0].icon}.png>
+                                                <p>Temp: ${Math.floor(((response.list[i].main.temp - 273.15) * 1.8) + 32)}</p>
+                                                <p>Humidity: ${response.list[i].main.humidity}</p>
+                                                </div>`)
+                        forecastBlock.appendTo($("#forecast"))
+
+                    }
+                })
+            });
+        })
+
+
+
+    </script>
+</body>
+
+</html>
