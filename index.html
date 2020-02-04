@@ -39,7 +39,7 @@
                 $("#local-storage-cities").empty()
                 var citiesToShow = JSON.parse(localStorage.getItem('cities'));
                 citiesToShow.forEach(city => {
-                    var cityEl = $(`<p>${city}</p>`);
+                    var cityEl = $(`<p class= "stored-city">${city}</p>`);
                     cityEl.appendTo("#local-storage-cities");
                 });
             }
@@ -47,20 +47,35 @@
         showLocalStorage();
         // API key for openweathermap
         var citiesArr = [];
-        var userCity = "Atlanta";
+        var userCity = "";
         var APIKey = "de42f19ab27c7681f703973e88268186";
-
+        // when I click a locally stored city
+        $(document).on("click", ".stored-city", function () {
+            userCity = $(this).text()
+            generateWeatherForecast()
+        })
+        // when they enter the form using enter or a submit button
         $("#city-search-form").submit(function (event) {
             event.preventDefault();
 
             $thisFormTextBox = $(this).children()[1]
             $thisCity = $($thisFormTextBox).val()
+            // checks puts new text into localstorage if its not already in localstorage
             if ($thisCity != "") {
                 userCity = $thisCity;
                 if (localStorage.getItem('cities') != null) {
                     citiesArr = JSON.parse(localStorage.getItem('cities'));
-                    citiesArr.unshift(userCity);
-                    localStorage.setItem('cities', JSON.stringify(citiesArr));
+                    // variable that gets set to true if we already have the city they searched in local storage
+                    var hasCityAlready = false;
+                    citiesArr.forEach(city => {
+                        if (city.toLowerCase() == userCity.toLowerCase()) {
+                            hasCityAlready = true;
+                        }
+                    });
+                    if (!hasCityAlready) {
+                        citiesArr.unshift(userCity);
+                        localStorage.setItem('cities', JSON.stringify(citiesArr));
+                    }
                 }
                 else {
                     citiesArr.push(userCity);
@@ -70,8 +85,14 @@
             else {
                 userCity = "Dallas";
             }
-            var queryURL = "https://api.openweathermap.org/data/2.5/weather?q=" + userCity + "&appid=" + APIKey;
+
             showLocalStorage();
+            generateWeatherForecast();
+
+        })
+        //function that holds ajax requests that get the current day forecast, UV index and 5 day forecast
+        function generateWeatherForecast() {
+            var queryURL = "https://api.openweathermap.org/data/2.5/weather?q=" + userCity + "&appid=" + APIKey;
             $.ajax({
                 url: queryURL,
                 method: "GET"
@@ -102,14 +123,13 @@
                     url: fiveDayURL,
                     method: "GET"
                 }).then(function (response) {
-                    console.log(response)
+                    $("#forecast").empty()
                     var addedDays = 1;
                     var forecastH2 = $("<h2>5-Day Forecast:</h2>")
                     forecastH2.appendTo($("#forecast"))
                     for (var i = 0; i < 40; i += 9) {
                         var dayNow = moment().add(addedDays, 'days').format('MM/DD/YYYY')
                         addedDays++;
-                        console.log(dayNow)
                         // response.list[i]
                         var forecastBlock = $(`<div class= "forecast-block">
                                                 <h5>${dayNow}</h5>
@@ -122,8 +142,7 @@
                     }
                 })
             });
-        })
-
+        }
 
 
     </script>
